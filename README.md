@@ -1,7 +1,13 @@
 
-# MSPRT-TANDEM and LSEL
+# SPRT-TANDEM tutorial
 ## Introduction
-This repository contains MSPRT-TANDEM, including the Log-Sum-Exp Loss (LSEL), proposed in ["The Power of Log-Sum-Exp: Sequential Density Ratio Estimation for Spped-Accuracy Optimization"](https:to be updated) [ICML2021]. MSPRT-TANDEM performs early multiclass classification of time-series. MSPRT-TANDEM sequentially estimates log-likelihood ratios of multihypotheses, or classes, for fast and accurate sequential data classification, with the help of a novel loss function, the LSEL. We prove in our paper that the LSEL is consistent, has the hard class weighting effect, and guess-averse. 
+In this tutorial, we show you how to train & evaluate the SPRT-TANDEM algorithm on your sequential dataset. The tutorial is designed to work on Google Colab.
+
+## Quickstart
+1. Open the following notebook on a browser:
+    SPRT_TANDEM_tutorial.ipynb
+2. In the URL window, replace `https://github.com` with `https://colab.research.google.com/github` to open the notebook on Google Colab.
+3. Follow the instruction in the notebook!
 
 
 ## Requirements
