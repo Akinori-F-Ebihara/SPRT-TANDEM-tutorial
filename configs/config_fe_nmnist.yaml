@@ -1,7 +1,3 @@
-""" See `config_ti_nmnist.yaml` for more descriptions of the parameters."""
-# Path to tensorboard logs: `root_dir`/'root_tblogs'/'subproject_name'_'exp_phase'/'comment'_'time_stamp'/eventsXXX
-# Path to database files: `root_dir`/'root_dblogs'/'subproject_name'_'exp_phase'.db
-# Path to checkpoint files: `root_dir`/'root_ckptlogs'/'subproject_name'_'exp_phase'/'comment'_'time_stamp'/ckptXXX
 root_dir: "./"
 project_name: "sprt_multiclass"
 name_dataset: "nosaic_mnist"

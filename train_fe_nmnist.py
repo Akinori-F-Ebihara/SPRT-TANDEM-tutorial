@@ -1,3 +1,27 @@
+# MIT License
+
+# Copyright (c) 2021 Taiki Miyagawa and Akinori F. Ebihara
+
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+#
+# ==============================================================================
+
 from __future__ import absolute_import, division, print_function
 import datetime, sys
 import numpy as np
@@ -11,13 +35,12 @@ from models.optimizers import get_optimizer
 from models.losses import get_loss_fe
 from utils.misc import load_yaml, set_gpu_devices, fix_random_seed
 from utils.util_tensorboard import TensorboardLogger
-from utils.performance_metrics import list_metrics_to_list_bac,\
-    dict_confmx_to_dict_metrics, logits_to_confmx, binary_confmx_to_bac
+from utils.performance_metrics import logits_to_confmx, confmx_to_macrec
 from utils.util_optuna import run_optuna, suggest_parameters_fe
 from utils.util_ckpt import checkpoint_logger
 
 # Load Params
-config_path = "~/SPRT-TANDEM/configs/config_fe_nmnist.yaml"
+config_path = "./configs/config_fe_nmnist.yaml"
 config = load_yaml(config_path)
 
 # GPU settings
@@ -29,13 +52,13 @@ fix_random_seed(flag_seed=config["flag_seed"], seed=config["seed"])
 
 # Subfunctions
 def tblog_writer_train(tblogger, losses, global_step, bac):
-    tblogger.scalar_summary("train_loss/cross_entropy_loss", losses[1], int(global_step))
-    tblogger.scalar_summary("train_metric/balanced_accuracy", bac, int(global_step))
+    tblogger.scalar_summary("train_loss/Cross-entropy_Loss", losses[1], int(global_step))
+    tblogger.scalar_summary("train_metric/Macro-averaged Recall", bac, int(global_step))
 
 
 def tblog_writer_valid(tblogger, losses_valid, global_step, bac_valid):
-    tblogger.scalar_summary("valid_loss/cross_entropy_loss", losses_valid[1], int(global_step))
-    tblogger.scalar_summary("valid_metric/balanced_accuracy", bac_valid, int(global_step))
+    tblogger.scalar_summary("valid_loss/Cross-entropy_Loss", losses_valid[1], int(global_step))
+    tblogger.scalar_summary("valid_metric/Macro-averaged_Recall", bac_valid, int(global_step))
 
 
 def validation_loop(parsed_image_dataset_valid, model, num_validdata, batch_size, feat_dims):
@@ -43,12 +66,13 @@ def validation_loop(parsed_image_dataset_valid, model, num_validdata, batch_size
     for iter_bv, feats_valid in enumerate(parsed_image_dataset_valid):
         cnt = iter_bv + 1
 
-        # Decode features and binarize classification labels
-        x_batch_valid, y_batch_valid = decode_nosaic_mnist(feats_valid) 
+        # Decode features and classification labels
+        x_batch_valid, y_batch_valid = decode_nosaic_mnist(feats_valid, config["duration"]) 
         x_batch_valid, y_batch_valid = reshape_for_featext(
             x_batch_valid, y_batch_valid, feat_dims)
         x_batch_valid = normalize_images_nosaic_mnist(x_batch_valid)
-        y_batch_valid = binarize_labels_nosaic_mnist(y_batch_valid)
+        if config["num_classes"] == 2:
+            y_batch_valid = binarize_labels_nosaic_mnist(y_batch_valid)
 
         # Calc loss
         _, losses_valid_tmp, logits_valid, _ = get_loss_fe(
@@ -73,9 +97,10 @@ def validation_loop(parsed_image_dataset_valid, model, num_validdata, batch_size
                 losses_valid[iter_idx] += losses_valid_tmp[iter_idx]
 
         # Verbose
-        if ((iter_bv+1)%10 == 0) or (iter_bv == 0):
+        if ((iter_bv + 1) % 10 == 0) or (iter_bv == 0):
             sys.stdout.write(
-                "\rValidation Iter: {:3d}/{:3d}".format(iter_bv+1, (num_validdata//batch_size) + 1))
+                "\rValidation Iter: {:3d}/{:3d}".format(
+                    iter_bv + 1, (num_validdata // batch_size) + 1))
             sys.stdout.flush()
 
     print()
@@ -84,9 +109,9 @@ def validation_loop(parsed_image_dataset_valid, model, num_validdata, batch_size
     for iter_idx in range(len(losses_valid)):
         losses_valid[iter_idx] /= cnt
 
-    bac_valid = binary_confmx_to_bac(confmx_valid)
+    bac_valid = confmx_to_macrec(confmx_valid)
     print(confmx_valid)
-    print("Balanced Accuracy: {:7.5f}".format(bac_valid))
+    print("Macro-averaged Recall: {:7.5f}".format(bac_valid))
 
     return losses_valid, bac_valid
 
@@ -123,13 +148,13 @@ def objective(trial):
 
     # Load data
     ##################################
-    # Reed tfr
+    # Reed tfr and make 
     parsed_image_dataset_train, parsed_image_dataset_valid, parsed_image_dataset_test =\
         read_tfrecords_nosaic_mnist(
             record_file_train=config["tfr_train"], 
             record_file_test=config["tfr_test"], 
             batch_size=config["batch_size"], 
-            shuffle_buffer_size=2000)
+            shuffle_buffer_size=10000)
         
     # Model
     ######################################
@@ -139,7 +164,7 @@ def objective(trial):
     model = ResNetModel(
         resnet_size=config["resnet_size"],
         bottleneck=dict_resparams["bottleneck"],
-        num_classes=config["nb_cls"],
+        num_classes=config["num_classes"],
         kernel_size=dict_resparams["kernel_size"],
         conv_stride=dict_resparams["conv_stride"],
         first_pool_size=dict_resparams["first_pool_size"],
@@ -183,6 +208,7 @@ def objective(trial):
         config_path)
 
     # Tensorboard
+    #tf.summary.experimental.set_step(global_step)
     tblogger = TensorboardLogger(
         root_tblogs=config["root_tblogs"], 
         subproject_name=config["subproject_name"], 
@@ -202,11 +228,12 @@ def objective(trial):
         for epoch in range(config["nb_epochs"]):
             # Training loop
             for iter_b, feats in enumerate(parsed_image_dataset_train):
-                # Decode features, normalize images, and binarize classification labels
-                x_batch, y_batch = decode_nosaic_mnist(feats)
+                # Decode features, normalize images, and classification labels
+                x_batch, y_batch = decode_nosaic_mnist(feats, duration=config["duration"])
                 x_batch, y_batch = reshape_for_featext(x_batch, y_batch, config["feat_dims"])
                 x_batch = normalize_images_nosaic_mnist(x_batch)
-                y_batch = binarize_labels_nosaic_mnist(y_batch)                
+                if config["num_classes"] == 2:
+                    y_batch = binarize_labels_nosaic_mnist(y_batch)
 
                 # Show summary of model
                 if (epoch == 0) and (iter_b == 0):
@@ -240,7 +267,7 @@ def objective(trial):
                     # Confusion matrix of multiplets for every frame
                     confmx = logits_to_confmx(logits, y_batch)
                     print(confmx)
-                    bac = binary_confmx_to_bac(confmx)
+                    bac = confmx_to_macrec(confmx)
                     print("Balanced Accuracy: {:7.5f}".format(bac))
 
                     # Tensorboard
@@ -279,32 +306,10 @@ def objective(trial):
                         print("Saved checkpoint for step {}: {}".format(
                             int(global_step), save_path_prefix))
 
-                        # Test
-                        ############################
-                        if config["exp_phase"] == "stat":
-                            # Test loop
-                            _, bac_test = validation_loop(
-                                parsed_image_dataset_test, 
-                                model, 
-                                config["num_testdata"], 
-                                config["batch_size"],
-                                config["feat_dims"])
-     
-    # Final processes
-    ###############################################
-    if config["exp_phase"] == "stat":
-        # Save best values to .db file 
-        trial.set_user_attr("bac", float(bac_test))
-
     # Return best valid result for optuna
     return 1 - best
 
 
 if __name__ == '__main__':
-    run_optuna(
-        config["root_dblogs"], 
-        config["subproject_name"], 
-        config["exp_phase"], 
-        objective, 
-        config["nb_trials"])
+    run_optuna(config["root_dblogs"], config["subproject_name"], config["exp_phase"], objective, config["nb_trials"])
 
