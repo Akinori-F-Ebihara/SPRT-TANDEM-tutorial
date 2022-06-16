@@ -38,7 +38,9 @@ def load_yaml(yaml_path):
 
 def set_gpu_devices(gpu):
     physical_devices = tf.config.experimental.list_physical_devices('GPU')
-    assert len(physical_devices) > 0, "Not enough GPU hardware devices available"
+    if len(physical_devices) < 1:
+         print("Not enough GPU hardware devices available")
+         return
     tf.config.experimental.set_visible_devices(physical_devices[gpu], 'GPU')
     tf.config.experimental.set_memory_growth(physical_devices[gpu], True)
 
