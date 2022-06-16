@@ -68,7 +68,7 @@ if len(physical_devices) > 0:
     print('Found GPU(s) for acceleration.')
     set_gpu_devices(0) # the first GPU (numbered 0) will be used
 else:
-    print("Not enough GPU hardware devices available, running on CPUs...")
+    print("No GPU hardware devices are available, running on CPUs...")
 fix_random_seed(True, 7)
 
 # Load MNIST as numpy array
@@ -102,7 +102,7 @@ for train_or_test in phase:
         cnt = 1
         for image, label in zip(images_make, labels_make):
             # Verbose
-            if cnt % 1000 == 0:
+            if cnt % 10000 == 0:
                 print("Iteration {}/{}".format(cnt, len(images_make)))
             cnt += 1
 
