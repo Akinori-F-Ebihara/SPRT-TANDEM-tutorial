@@ -37,7 +37,7 @@ num_classes: 2
 name_optimizer: "adam" 
 
 resnet_size: 8 # 110 # ResNet num of layers
-final_size: 32 # 128 # Num of final channels after the GAP layer
+final_size: 16 # 128 # Num of final channels after the GAP layer
 flag_wd: True 
 resnet_version: 1 
     # See the ResNet's original paper.
