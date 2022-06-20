@@ -2,7 +2,7 @@
 
 In this tutorial, we show you how to train & evaluate the __SPRT-TANDEM__ algorithm on your sequential dataset. The tutorial is designed to work on [Google Colab](https://colab.research.google.com/).
 
-## Demo
+## Quickstart
 
 1. Double click [this link](https://colab.research.google.com/github/Akinori-F-Ebihara/SPRT-TANDEM-tutorial/blob/main/notebooks/SPRT_TANDEM_tutorial.ipynb) to open the following notebook in Google Colab:  
    [``./notebooks/SPRT_TANDEM_tutorial.ipynb``](https://github.com/Akinori-F-Ebihara/SPRT-TANDEM-tutorial/blob/main/notebooks/SPRT_TANDEM_tutorial.ipynb)
